@@ -474,8 +474,10 @@ class FREpubParser: NSObject, SSZipArchiveDelegate {
     /// - Parameter url: File URL
     /// - Throws: Error if not possible
     fileprivate func addSkipBackupAttributeToItemAtURL(_ url: URL) throws {
-        assert(FileManager.default.fileExists(atPath: url.path, isDirectory: ObjCBool(true)))
 
+        var directoryExists = ObjCBool.init(false)
+        assert(FileManager.default.fileExists(atPath: url.path, isDirectory: &directoryExists))
+        
         var urlToExclude = url
         var resourceValues = URLResourceValues()
         resourceValues.isExcludedFromBackup = true
