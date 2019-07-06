@@ -101,7 +101,7 @@ class FREpubParser: NSObject, SSZipArchiveDelegate {
 
         // Unzip if necessary
         let needsUnzip = !fileManager.fileExists(atPath: bookBasePath, isDirectory:&isDir) || !isDir.boolValue
-
+        
         if needsUnzip {
             SSZipArchive.unzipFile(atPath: withEpubPath, toDestination: bookBasePath, delegate: self)
         }
@@ -120,9 +120,11 @@ class FREpubParser: NSObject, SSZipArchiveDelegate {
     /// - Parameter bookBasePath: The base book path
     /// - Throws: `FolioReaderError`
     private func readContainer(with bookBasePath: String) throws {
+        
         let containerPath = "META-INF/container.xml"
         let containerData = try Data(contentsOf: URL(fileURLWithPath: bookBasePath.appendingPathComponent(containerPath)), options: .alwaysMapped)
-        let xmlDoc = try AEXMLDocument(xml: containerData)
+        let decryptedData = try AES.decrypt(data: containerData)
+        let xmlDoc = try AEXMLDocument(xml: decryptedData)
         let opfResource = FRResource()
         opfResource.href = xmlDoc.root["rootfiles"]["rootfile"].attributes["full-path"]
         guard let fullPath = xmlDoc.root["rootfiles"]["rootfile"].attributes["full-path"] else {
@@ -131,6 +133,7 @@ class FREpubParser: NSObject, SSZipArchiveDelegate {
         opfResource.mediaType = MediaType.by(fileName: fullPath)
         book.opfResource = opfResource
         resourcesBasePath = bookBasePath.appendingPathComponent(book.opfResource.href.deletingLastPathComponent)
+    
     }
 
     /// Read and parse .opf file.
@@ -474,10 +477,8 @@ class FREpubParser: NSObject, SSZipArchiveDelegate {
     /// - Parameter url: File URL
     /// - Throws: Error if not possible
     fileprivate func addSkipBackupAttributeToItemAtURL(_ url: URL) throws {
+        assert(FileManager.default.fileExists(atPath: url.path))
 
-        var directoryExists = ObjCBool.init(false)
-        assert(FileManager.default.fileExists(atPath: url.path, isDirectory: &directoryExists))
-        
         var urlToExclude = url
         var resourceValues = URLResourceValues()
         resourceValues.isExcludedFromBackup = true
@@ -491,4 +492,24 @@ class FREpubParser: NSObject, SSZipArchiveDelegate {
         guard let epubPathToRemove = epubPathToRemove else { return }
         try? FileManager.default.removeItem(atPath: epubPathToRemove)
     }
+    
+    func zipArchiveDidUnzipFile(at fileIndex: Int, totalFiles: Int, archivePath: String, unzippedFilePath: String) {
+        
+        let url = URL(fileURLWithPath: unzippedFilePath)
+        guard let fileExtension = url.lastPathComponent.components(separatedBy: ".").last else { return }
+        
+        if MediaType.xhtml.extensions.contains(fileExtension) {
+            
+            do {
+                let data = try Data(contentsOf: url, options: .mappedIfSafe)
+                let encryptedData = try AES.encrypt(data: data)
+                try encryptedData.write(to: url, options: .atomic)
+            } catch {
+                print(error)
+            }
+            
+        }
+        
+    }
+    
 }

@@ -461,9 +461,18 @@ open class FolioReaderCenter: UIViewController, UICollectionViewDelegate, UIColl
 
         // Configure the cell
         let resource = self.book.spine.spineReferences[indexPath.row].resource
-        guard var html = try? String(contentsOfFile: resource.fullHref, encoding: String.Encoding.utf8) else {
-            return cell
+    
+        var decryptedData: Data = Data()
+        
+        do {
+            let htmlURL = URL(fileURLWithPath: resource.fullHref)
+            let encryptedData = try Data(contentsOf: htmlURL)
+             decryptedData = try AES.decrypt(data: encryptedData)
+        } catch {
+            print(error)
         }
+    
+        var html = String(data: decryptedData, encoding: .utf8) ?? ""
 
         let mediaOverlayStyleColors = "\"\(self.readerConfig.mediaOverlayColor.hexString(false))\", \"\(self.readerConfig.mediaOverlayColor.highlightColor().hexString(false))\""
 
