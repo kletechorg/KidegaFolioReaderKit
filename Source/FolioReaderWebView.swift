@@ -277,7 +277,7 @@ open class FolioReaderWebView: UIWebView {
         let colorsItem = UIMenuItem(title: "C", image: colors) { [weak self] _ in
             self?.colors(menuController)
         }
-        let shareItem = UIMenuItem(title: "S", image: share) { [weak self] _ in
+        let shareItem = UIMenuItem(title: "Paylaş") { [weak self]_ in
             self?.share(menuController)
         }
         let removeItem = UIMenuItem(title: "R", image: remove) { [weak self] _ in
